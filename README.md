@@ -84,8 +84,8 @@ src/
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/vahanwire-app.git
-cd vahanwire-app
+git clone https://github.com/nishanttiwari-eng/Vahanwire.git
+cd Vahanwire
 ```
 
 #### 2. Install Dependencies
