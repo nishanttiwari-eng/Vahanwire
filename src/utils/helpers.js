@@ -1,5 +1,5 @@
 export const generateId = () => {
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
 export const formatCurrency = amount => {
@@ -40,9 +40,16 @@ export const validateAmount = amount => {
   return {valid: true};
 };
 
-export const getAvatarColor = index => {
+export const getAvatarColor = text => {
+  if (!text || typeof text !== 'string') return '#FFD54F';
+
   const colors = ['#FFD54F', '#D6E4F0', '#4CAF50', '#FF8A65', '#90CAF9'];
-  return colors[index % colors.length];
+
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 };
 
 export const sleep = ms => {
@@ -50,6 +57,7 @@ export const sleep = ms => {
 };
 
 export const truncateText = (text, maxLength) => {
+  if (!text || typeof text !== 'string') return '';
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
 };

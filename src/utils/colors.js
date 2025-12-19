@@ -14,7 +14,9 @@ export const colors = {
   darkGray: '#9E9E9E',
   charcoal: '#424242',
 
-  success: '#4CAF50',
+  get success() {
+    return this.secondary;
+  },
   error: '#F44336',
   warning: '#FF9800',
   info: '#2196F3',

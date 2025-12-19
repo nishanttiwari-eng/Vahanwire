@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {View, Text, StyleSheet, ScrollView, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Header from '../components/Header';
@@ -9,7 +9,29 @@ import {formatCurrency, getAvatarColor} from '../utils/helpers';
 import colors from '../utils/colors';
 
 const UserOffersScreen = ({navigation}) => {
-  const {offers, acceptOffer} = useApp();
+  const {
+    getCurrentUserActiveRequest,
+    getOffersForRequest,
+    acceptOffer,
+    rejectOffer,
+  } = useApp();
+
+  const activeRequest = getCurrentUserActiveRequest();
+  const pendingOffers = activeRequest
+    ? getOffersForRequest(activeRequest.id, 'pending')
+    : [];
+  const acceptedOffers = activeRequest
+    ? getOffersForRequest(activeRequest.id, 'accepted')
+    : [];
+
+  useEffect(() => {
+    if (acceptedOffers.length > 0) {
+      const timer = setTimeout(() => {
+        navigation.navigate('Success');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [acceptedOffers.length, navigation]);
 
   const handleAcceptOffer = offerId => {
     Alert.alert('Accept Offer', 'Are you sure you want to accept this offer?', [
@@ -21,7 +43,22 @@ const UserOffersScreen = ({navigation}) => {
         text: 'Accept',
         onPress: () => {
           acceptOffer(offerId);
-          navigation.navigate('Success');
+        },
+      },
+    ]);
+  };
+
+  const handleRejectOffer = offerId => {
+    Alert.alert('Reject Offer', 'Are you sure you want to reject this offer?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Reject',
+        style: 'destructive',
+        onPress: () => {
+          rejectOffer(offerId);
         },
       },
     ]);
@@ -36,7 +73,15 @@ const UserOffersScreen = ({navigation}) => {
       <Header title="Service" showBack onBackPress={handleBack} />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {offers.length === 0 ? (
+        {!activeRequest ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyTitle}>No Active Request</Text>
+            <Text style={styles.emptyText}>
+              You don't have any active service requests at the moment.
+            </Text>
+          </View>
+        ) : pendingOffers.length === 0 && acceptedOffers.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>⏳</Text>
             <Text style={styles.emptyTitle}>Waiting for Offers</Text>
@@ -47,42 +92,84 @@ const UserOffersScreen = ({navigation}) => {
           </View>
         ) : (
           <View style={styles.offersContainer}>
-            <Text style={styles.sectionTitle}>Available Offers</Text>
+            {acceptedOffers.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>✓ Accepted Offer</Text>
+                {acceptedOffers.map(offer => (
+                  <Card key={offer.id} style={styles.offerCard}>
+                    <View style={styles.offerRow}>
+                      <View style={styles.providerInfo}>
+                        <View
+                          style={[
+                            styles.avatar,
+                            {
+                              backgroundColor: getAvatarColor(
+                                offer.providerName,
+                              ),
+                            },
+                          ]}
+                        />
+                        <Text style={styles.providerName}>
+                          {offer.providerName}
+                        </Text>
+                      </View>
+                      <Text style={styles.amount}>
+                        {formatCurrency(offer.amount)}
+                      </Text>
+                    </View>
+                    <View style={styles.acceptedBadge}>
+                      <Text style={styles.acceptedText}>✓ Accepted</Text>
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            )}
 
-            {offers.map((offer, index) => (
-              <Card key={offer.id} style={styles.offerCard}>
-                <View style={styles.offerRow}>
-                  <View style={styles.providerInfo}>
-                    <View
-                      style={[
-                        styles.avatar,
-                        {backgroundColor: getAvatarColor(index)},
-                      ]}
-                    />
-                    <Text style={styles.providerName}>
-                      {offer.providerName}
-                    </Text>
-                  </View>
-                  <Text style={styles.amount}>
-                    {formatCurrency(offer.amount)}
-                  </Text>
-                </View>
+            {pendingOffers.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  Available Offers ({pendingOffers.length})
+                </Text>
+                {pendingOffers.map(offer => (
+                  <Card key={offer.id} style={styles.offerCard}>
+                    <View style={styles.offerRow}>
+                      <View style={styles.providerInfo}>
+                        <View
+                          style={[
+                            styles.avatar,
+                            {
+                              backgroundColor: getAvatarColor(
+                                offer.providerName,
+                              ),
+                            },
+                          ]}
+                        />
+                        <Text style={styles.providerName}>
+                          {offer.providerName}
+                        </Text>
+                      </View>
+                      <Text style={styles.amount}>
+                        {formatCurrency(offer.amount)}
+                      </Text>
+                    </View>
 
-                {!offer.accepted && (
-                  <Button
-                    title="Accept"
-                    onPress={() => handleAcceptOffer(offer.id)}
-                    style={styles.acceptButton}
-                  />
-                )}
-
-                {offer.accepted && (
-                  <View style={styles.acceptedBadge}>
-                    <Text style={styles.acceptedText}>✓ Accepted</Text>
-                  </View>
-                )}
-              </Card>
-            ))}
+                    <View style={styles.actionButtons}>
+                      <Button
+                        title="Accept"
+                        onPress={() => handleAcceptOffer(offer.id)}
+                        style={[styles.acceptButton, {marginRight: 12}]}
+                      />
+                      <Button
+                        title="Reject"
+                        onPress={() => handleRejectOffer(offer.id)}
+                        style={styles.rejectButton}
+                        variant="secondary"
+                      />
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -161,15 +248,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
+  section: {
+    marginBottom: 24,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
   acceptButton: {
-    marginTop: 8,
+    flex: 1,
+  },
+  rejectButton: {
+    flex: 1,
   },
   acceptedBadge: {
     backgroundColor: colors.success,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 12,
     alignItems: 'center',
   },
   acceptedText: {

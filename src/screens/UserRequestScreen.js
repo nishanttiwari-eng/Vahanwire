@@ -23,26 +23,36 @@ const UserRequestScreen = ({navigation}) => {
   const [to, setTo] = useState('');
 
   const handleFindService = () => {
-    const nameValidation = validateName(name);
+    const trimmedName = name.trim();
+    const trimmedFrom = from.trim();
+    const trimmedTo = to.trim();
+
+    const nameValidation = validateName(trimmedName);
     if (!nameValidation.valid) {
       Alert.alert('Invalid Name', nameValidation.message);
       return;
     }
 
-    const fromValidation = validateLocation(from);
+    const fromValidation = validateLocation(trimmedFrom);
     if (!fromValidation.valid) {
       Alert.alert('Invalid Location', fromValidation.message);
       return;
     }
 
-    const toValidation = validateLocation(to);
+    const toValidation = validateLocation(trimmedTo);
     if (!toValidation.valid) {
       Alert.alert('Invalid Location', toValidation.message);
       return;
     }
 
-    createRequest(name, from, to);
-    navigation.navigate('SearchingProvider');
+    try {
+      const request = createRequest(trimmedName, trimmedFrom, trimmedTo);
+      if (request) {
+        navigation.navigate('SearchingProvider');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create request. Please try again.');
+    }
   };
 
   const handleBack = () => {
@@ -102,7 +112,7 @@ const UserRequestScreen = ({navigation}) => {
           <Button
             title="Find Service"
             onPress={handleFindService}
-            disabled={!name || !from || !to}
+            disabled={!name.trim() || !from.trim() || !to.trim()}
           />
         </View>
       </KeyboardAvoidingView>

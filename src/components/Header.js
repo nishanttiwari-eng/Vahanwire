@@ -11,7 +11,9 @@ const Header = ({title, showBack = false, onBackPress}) => {
             style={styles.backButton}
             onPress={onBackPress}
             activeOpacity={0.7}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+            accessibilityLabel="Go back"
+            accessibilityRole="button">
             <Text style={styles.backIcon}>
               {Platform.OS === 'ios' ? '‹' : '←'}
             </Text>

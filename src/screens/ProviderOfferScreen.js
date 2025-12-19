@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -16,51 +16,45 @@ import Header from '../components/Header';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import {useApp} from '../context/AppContext';
-import {formatCurrency, validateAmount, getAvatarColor} from '../utils/helpers';
+import {validateAmount, getAvatarColor} from '../utils/helpers';
 import colors from '../utils/colors';
 
+const getButtonTitle = (providerName, hasExistingOffer, isRejected) => {
+  if (!providerName) return 'Submit Offer';
+  if (hasExistingOffer) return isRejected ? 'Re-offer' : 'Update Offer';
+  return 'Submit Offer';
+};
+
 const ProviderOfferScreen = ({navigation}) => {
-  const {userRequest, submitOffer} = useApp();
+  const {
+    getAvailableRequests,
+    submitOffer,
+    currentUser,
+    hasRejectedOffer,
+    getOffersForRequest,
+  } = useApp();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [providerName, setProviderName] = useState('');
 
-  const providers = [
-    {name: 'Advik Bhagat', amount: '485'},
-    {name: 'Rahul Saini', amount: '385'},
-    {name: 'Tapan Kumar', amount: '685'},
-  ];
+  const availableRequests = useMemo(
+    () => getAvailableRequests(),
+    [getAvailableRequests],
+  );
 
-  useEffect(() => {
-    let timeoutId;
-
-    if (successModalVisible) {
-      timeoutId = setTimeout(() => {
-        setSuccessModalVisible(false);
-        navigation.navigate('RoleSelection');
-      }, 5000);
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [successModalVisible, navigation]);
-
-  const handleOfferPress = provider => {
-    if (!userRequest) {
-      Alert.alert('No Request', 'There are no active requests at the moment.');
-      return;
-    }
-    setSelectedRequest({...userRequest, provider: provider.name});
-    setOfferAmount(provider.amount);
+  const handleOfferPress = request => {
+    setSelectedRequest(request);
+    setOfferAmount('');
     setModalVisible(true);
   };
 
   const handleSubmitOffer = () => {
-    if (!selectedRequest) return;
+    if (!selectedRequest || !providerName.trim()) {
+      Alert.alert('Missing Information', 'Please enter your provider name.');
+      return;
+    }
 
     const validation = validateAmount(offerAmount);
     if (!validation.valid) {
@@ -68,10 +62,15 @@ const ProviderOfferScreen = ({navigation}) => {
       return;
     }
 
-    submitOffer(selectedRequest.provider, offerAmount);
-
-    setModalVisible(false);
-    setSuccessModalVisible(true);
+    const offer = submitOffer(
+      selectedRequest.id,
+      providerName.trim(),
+      offerAmount,
+    );
+    if (offer) {
+      setModalVisible(false);
+      setSuccessModalVisible(true);
+    }
   };
 
   const handleBack = () => {
@@ -83,7 +82,7 @@ const ProviderOfferScreen = ({navigation}) => {
       <Header title="Service" showBack onBackPress={handleBack} />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {!userRequest ? (
+        {availableRequests.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📭</Text>
             <Text style={styles.emptyTitle}>No Active Requests</Text>
@@ -96,30 +95,53 @@ const ProviderOfferScreen = ({navigation}) => {
           <View style={styles.requestsContainer}>
             <Text style={styles.sectionTitle}>Available Requests</Text>
 
-            {providers.map((provider, index) => (
-              <Card key={index} style={styles.requestCard}>
-                <View style={styles.providerRow}>
-                  <View style={styles.providerInfo}>
-                    <View
-                      style={[
-                        styles.avatar,
-                        {backgroundColor: getAvatarColor(index)},
-                      ]}
-                    />
-                    <Text style={styles.providerName}>{provider.name}</Text>
-                  </View>
-                  <Text style={styles.amount}>
-                    {formatCurrency(provider.amount)}
-                  </Text>
-                </View>
+            {availableRequests.map((request, index) => {
+              const existingOffers = getOffersForRequest(request.id);
+              const hasExistingOffer = providerName
+                ? existingOffers.some(o => o.providerName === providerName)
+                : false;
+              const isRejected = providerName
+                ? hasRejectedOffer(request.id, providerName)
+                : false;
 
-                <Button
-                  title="Accept"
-                  onPress={() => handleOfferPress(provider)}
-                  style={styles.acceptButton}
-                />
-              </Card>
-            ))}
+              return (
+                <Card key={request.id} style={styles.requestCard}>
+                  <View style={styles.requestRow}>
+                    <View style={styles.requestInfo}>
+                      <View
+                        style={[
+                          styles.avatar,
+                          {backgroundColor: getAvatarColor(request.userName)},
+                        ]}
+                      />
+                      <View style={styles.requestDetails}>
+                        <Text style={styles.userName}>{request.userName}</Text>
+                        <Text style={styles.route}>
+                          {request.from} → {request.to}
+                        </Text>
+                        {existingOffers.length > 0 && (
+                          <Text style={styles.offerCount}>
+                            {existingOffers.length} offer
+                            {existingOffers.length > 1 ? 's' : ''} received
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  <Button
+                    title={getButtonTitle(
+                      providerName,
+                      hasExistingOffer,
+                      isRejected,
+                    )}
+                    onPress={() => handleOfferPress(request)}
+                    style={styles.offerButton}
+                    variant={isRejected ? 'secondary' : 'primary'}
+                  />
+                </Card>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -136,7 +158,7 @@ const ProviderOfferScreen = ({navigation}) => {
             <Text style={styles.modalTitle}>Offer Price</Text>
 
             {selectedRequest && (
-              <View style={styles.requestDetails}>
+              <View style={styles.requestDetailsModal}>
                 <View style={styles.detailsRow}>
                   <View
                     style={[
@@ -146,10 +168,10 @@ const ProviderOfferScreen = ({navigation}) => {
                   />
                   <View style={styles.detailsText}>
                     <Text style={styles.detailName}>
-                      {selectedRequest.provider}
+                      {selectedRequest.userName}
                     </Text>
                     <Text style={styles.detailLocation}>
-                      Location: {selectedRequest.from}
+                      From: {selectedRequest.from}
                     </Text>
                     <Text style={styles.detailLocation}>
                       To: {selectedRequest.to}
@@ -158,6 +180,18 @@ const ProviderOfferScreen = ({navigation}) => {
                 </View>
               </View>
             )}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Provider Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                placeholderTextColor={colors.darkGray}
+                value={providerName}
+                onChangeText={setProviderName}
+                autoCapitalize="words"
+              />
+            </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Enter Amount</Text>
@@ -187,12 +221,20 @@ const ProviderOfferScreen = ({navigation}) => {
         </View>
       </Modal>
 
-      <SuccessModal visible={successModalVisible} />
+      <SuccessModal
+        visible={successModalVisible}
+        onClose={() => {
+          setSuccessModalVisible(false);
+          setProviderName('');
+          setOfferAmount('');
+          navigation.navigate('RoleSelection');
+        }}
+      />
     </SafeAreaView>
   );
 };
 
-const SuccessModal = ({visible}) => {
+const SuccessModal = ({visible, onClose}) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const confettiAnims = useRef([
@@ -201,6 +243,7 @@ const SuccessModal = ({visible}) => {
     new Animated.Value(0),
     new Animated.Value(0),
   ]).current;
+  const animationsRef = useRef([]);
 
   useEffect(() => {
     if (visible) {
@@ -208,7 +251,7 @@ const SuccessModal = ({visible}) => {
       fadeAnim.setValue(0);
       confettiAnims.forEach(anim => anim.setValue(0));
 
-      Animated.sequence([
+      const mainAnimation = Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 1,
           tension: 50,
@@ -220,9 +263,10 @@ const SuccessModal = ({visible}) => {
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      mainAnimation.start();
 
-      confettiAnims.forEach((anim, index) => {
+      const confettiAnimations = confettiAnims.map((anim, index) =>
         Animated.loop(
           Animated.sequence([
             Animated.delay(index * 200),
@@ -238,9 +282,17 @@ const SuccessModal = ({visible}) => {
               useNativeDriver: true,
             }),
           ]),
-        ).start();
-      });
+        ),
+      );
+
+      animationsRef.current = [mainAnimation, ...confettiAnimations];
+      confettiAnimations.forEach(animation => animation.start());
     }
+
+    return () => {
+      animationsRef.current.forEach(animation => animation.stop());
+      animationsRef.current = [];
+    };
   }, [visible]);
 
   if (!visible) return null;
@@ -250,7 +302,7 @@ const SuccessModal = ({visible}) => {
       animationType="slide"
       transparent={true}
       visible={visible}
-      onRequestClose={() => {}}>
+      onRequestClose={onClose}>
       <View style={styles.successModalOverlay}>
         <View style={styles.successModalContent}>
           <View style={styles.modalHandle} />
@@ -302,15 +354,18 @@ const SuccessModal = ({visible}) => {
 
           <Animated.View
             style={[styles.successTextContainer, {opacity: fadeAnim}]}>
-            <Text style={styles.successTitle}>Hooray!</Text>
-            <Text style={styles.successSubtitle}>Booking Accepted</Text>
+            <Text style={styles.successTitle}>Offer Submitted!</Text>
+            <Text style={styles.successSubtitle}>
+              Waiting for User Response
+            </Text>
           </Animated.View>
 
-          <Animated.View
-            style={[styles.autoCloseContainer, {opacity: fadeAnim}]}>
-            <Text style={styles.autoCloseText}>
-              Redirecting automatically...
-            </Text>
+          <Animated.View style={[{opacity: fadeAnim}]}>
+            <TouchableOpacity
+              style={styles.successCloseButton}
+              onPress={onClose}>
+              <Text style={styles.successCloseText}>Done</Text>
+            </TouchableOpacity>
           </Animated.View>
         </View>
       </View>
@@ -389,8 +444,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  acceptButton: {
+  offerButton: {
     marginTop: 8,
+  },
+  requestRow: {
+    marginBottom: 16,
+  },
+  requestInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  requestDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  route: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  offerCount: {
+    fontSize: 12,
+    color: colors.accent,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
@@ -419,7 +502,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  requestDetails: {
+  requestDetailsModal: {
     backgroundColor: colors.lightGray,
     borderRadius: 12,
     padding: 16,
@@ -541,16 +624,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  autoCloseContainer: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: colors.lightGray,
-    borderRadius: 8,
+  successCloseButton: {
+    backgroundColor: colors.success,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    minWidth: 200,
+    alignItems: 'center',
   },
-  autoCloseText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
+  successCloseText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
 

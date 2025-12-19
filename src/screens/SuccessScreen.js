@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, Animated, Easing} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Button from '../components/Button';
@@ -7,9 +7,9 @@ import colors from '../utils/colors';
 
 const SuccessScreen = ({navigation}) => {
   const {resetApp} = useApp();
-  const scaleAnim = new Animated.Value(0);
-  const fadeAnim = new Animated.Value(0);
-  const confettiAnim = new Animated.Value(0);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const confettiAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
@@ -26,7 +26,7 @@ const SuccessScreen = ({navigation}) => {
       }),
     ]).start();
 
-    Animated.loop(
+    const confettiLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(confettiAnim, {
           toValue: 1,
@@ -40,7 +40,12 @@ const SuccessScreen = ({navigation}) => {
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    confettiLoop.start();
+
+    return () => {
+      confettiLoop.stop();
+    };
   }, []);
 
   const handleDone = () => {

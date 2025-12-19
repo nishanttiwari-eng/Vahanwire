@@ -1,19 +1,31 @@
-import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import React, {useEffect} from 'react';
+import {View, Text, StyleSheet, Image} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import RoleCard from '../components/RoleCard';
 import {useApp} from '../context/AppContext';
 import colors from '../utils/colors';
 
-const RoleSelectionScreen = ({navigation}) => {
-  const {selectRole} = useApp();
+const RoleSelectionScreen = ({navigation, route}) => {
+  const {selectRole, offers, bookingCompleted, loginUser} = useApp();
+
+  useEffect(() => {
+    if (route.params?.userId && route.params?.userName) {
+      loginUser(route.params.userId, route.params.userName);
+    }
+  }, [route.params, loginUser]);
 
   const handleRoleSelect = role => {
     selectRole(role);
+
     if (role === 'user') {
       navigation.navigate('UserRequest');
     } else {
-      navigation.navigate('ProviderOffer');
+      const acceptedOffer = offers.find(o => o.status === 'accepted');
+      if (acceptedOffer && bookingCompleted) {
+        navigation.navigate('ProviderNotification');
+      } else {
+        navigation.navigate('ProviderOffer');
+      }
     }
   };
 

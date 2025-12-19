@@ -4,10 +4,7 @@ import colors from '../utils/colors';
 
 const RoleCard = ({title, icon, onPress}) => {
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.8}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.iconContainer}>
         <Text style={styles.icon}>{icon}</Text>
       </View>
@@ -40,7 +37,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginRight: 16,
   },
   icon: {
     fontSize: 32,

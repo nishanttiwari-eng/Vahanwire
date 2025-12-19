@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -16,7 +16,7 @@ const Button = ({
   style,
   textStyle,
 }) => {
-  const getButtonStyle = () => {
+  const buttonStyle = useMemo(() => {
     const baseStyle = [styles.button];
 
     if (variant === 'primary') {
@@ -36,9 +36,9 @@ const Button = ({
     }
 
     return baseStyle;
-  };
+  }, [variant, disabled, style]);
 
-  const getTextStyle = () => {
+  const textStyleMemo = useMemo(() => {
     const baseStyle = [styles.buttonText];
 
     if (variant === 'primary') {
@@ -58,18 +58,18 @@ const Button = ({
     }
 
     return baseStyle;
-  };
+  }, [variant, disabled, textStyle]);
 
   return (
     <TouchableOpacity
-      style={getButtonStyle()}
+      style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}>
       {loading ? (
         <ActivityIndicator color={colors.white} />
       ) : (
-        <Text style={getTextStyle()}>{title}</Text>
+        <Text style={textStyleMemo}>{title}</Text>
       )}
     </TouchableOpacity>
   );

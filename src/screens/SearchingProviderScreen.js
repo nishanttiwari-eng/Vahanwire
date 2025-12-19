@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,17 @@ import {useApp} from '../context/AppContext';
 import colors from '../utils/colors';
 
 const SearchingProviderScreen = ({navigation}) => {
-  const {offers, shouldShowOffers} = useApp();
+  const {getCurrentUserActiveRequest, getOffersForRequest} = useApp();
+
+  const activeRequest = useMemo(
+    () => getCurrentUserActiveRequest(),
+    [getCurrentUserActiveRequest],
+  );
+  const pendingOffers = useMemo(
+    () =>
+      activeRequest ? getOffersForRequest(activeRequest.id, 'pending') : [],
+    [activeRequest, getOffersForRequest],
+  );
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -27,14 +37,14 @@ const SearchingProviderScreen = ({navigation}) => {
   }, [navigation]);
 
   useEffect(() => {
-    if (offers.length > 0) {
+    if (pendingOffers.length > 0) {
       const timer = setTimeout(() => {
         navigation.replace('UserOffers');
       }, 1500);
 
       return () => clearTimeout(timer);
     }
-  }, [offers, navigation]);
+  }, [pendingOffers.length, navigation, activeRequest]);
 
   const handleBack = () => {
     navigation.navigate('RoleSelection');
@@ -52,9 +62,10 @@ const SearchingProviderScreen = ({navigation}) => {
             Please wait while we find the best service providers for you...
           </Text>
 
-          {offers.length > 0 && (
+          {pendingOffers.length > 0 && (
             <Text style={styles.foundText}>
-              Found {offers.length} provider{offers.length > 1 ? 's' : ''}!
+              Found {pendingOffers.length} offer
+              {pendingOffers.length > 1 ? 's' : ''}!
             </Text>
           )}
         </View>
