@@ -130,7 +130,7 @@ npx react-native run-ios
 
 For faster evaluation without local setup:
 
-🔗 **[Download APK](https://i.diawi.com/GHXbYm)**
+🔗 **[Download APK](https://i.diawi.com/tQo1Vu)**
 
 > Enable *Install from Unknown Sources* on your device before installation.
 
